@@ -7,13 +7,15 @@ import './App.css';
 function App() {
   return (
     <div className="App">
-      <Router>
-        <Routes>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/reader/:bookId" element={<ReaderPage />} />
-        </Routes>
-      </Router>
+      <BrowserRouter basename="/ebook-reader">
+        <Router>
+          <Routes>
+            <Route path="/" element={<LoginPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/reader/:bookId" element={<ReaderPage />} />
+          </Routes>
+        </Router>
+      </BrowserRouter>
     </div>
   );
 }
