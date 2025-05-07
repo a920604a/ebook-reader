@@ -79,7 +79,6 @@ ebook-reader
 │   └── favicon.ico
 ├── src
 │   ├── components
-│   │   ├── Login.jsx
 │   │   ├── UploadBook.jsx
 │   │   ├── BookReader.jsx
 │   │   └── BookList.jsx
