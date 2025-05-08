@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../supabase';
-import { Button, Text, Box, Center, Heading, Stack } from '@chakra-ui/react';
+import { Button, Text, Box, Center, Heading } from '@chakra-ui/react';
 import { motion } from 'framer-motion';
 
 // GitHub Icon
@@ -47,7 +47,9 @@ function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: 'http://localhost:3000/ebook-reader/dashboard',
+          // redirectTo: 'http://localhost:3000/ebook-reader/dashboard',
+          
+          redirectTo: 'https://a920604a.github.io/ebook-reader/dashboard',
         },
       });
 
