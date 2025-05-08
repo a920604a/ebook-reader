@@ -69,7 +69,7 @@ This project integrates several components for a seamless reading experience:
 
 * **Frontend**: Built with React, the frontend handles user interactions, file uploads, and book rendering.
 * **Authentication**: Uses Supabase Auth for secure user login via GitHub OAuth.
-* **Database**: Supabase Database stores user data such as reading progress and bookmarks.
+* **Database**: Supabase(Postgres) Database stores user data.
 * **File Storage**: Supabase Storage is used for managing ebook files.
 * **Local Caching**: IndexedDB for fast local data access and offline support.
 * **CI/CD**: Automated testing and deployment via GitHub Actions to GitHub Pages.
