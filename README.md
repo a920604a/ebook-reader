@@ -39,41 +39,6 @@ ebook-reader
 └── vite.config.js
 ```
 
-
-```mermaid
-flowchart TD
-  subgraph 使用者設備
-    A[使用者瀏覽器]
-    I[IndexedDB]
-  end
-
-  subgraph 前端應用
-    B[React 應用程式]
-  end
-
-  subgraph Supabase
-    C[Supabase Auth<br>（GitHub OAuth）]
-    D[Supabase Database]
-    E[Supabase Storage]
-  end
-
-  subgraph GitHub
-    F[GitHub Repository]
-    G[GitHub Actions<br>（CI/CD）]
-    H[GitHub Pages<br>（部署）]
-  end
-
-  A -->|訪問| B
-  B -->|OAuth 登入請求| C
-  C -->|返回 JWT Token| B
-  B -->|讀取/寫入資料| D
-  B -->|上傳/下載檔案| E
-  B -->|本地快取| I
-  F -->|版本控制| G
-  G -->|自動建置與部署| H
-  A -->|透過 GitHub Pages 訪問應用| H
-
-```
 ## Available Scripts
 
 In the project directory, you can run:
