@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../supabase';
+import { Button, Text, Box, Center, Heading, Stack } from '@chakra-ui/react';
+import { motion } from 'framer-motion';
 
 // GitHub Icon
 const GitHubIcon = () => (
@@ -19,9 +21,18 @@ const GitHubIcon = () => (
 
 // Error Alert
 const Alert = ({ message }) => (
-  <div className="mb-4 bg-orange-50 !border-l-4 !border-orange-500 p-4 !text-orange-700 rounded-lg animate-fade-in">
-    <p role="alert">{message}</p>
-  </div>
+  <Box
+    mb={4}
+    bg="orange.50"
+    borderLeft="4px solid"
+    borderColor="orange.500"
+    p={4}
+    color="orange.700"
+    borderRadius="lg"
+    animation="fade-in 0.5s"
+  >
+    <Text>{message}</Text>
+  </Box>
 );
 
 function LoginPage() {
@@ -36,8 +47,7 @@ function LoginPage() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: 'https://a920604a.github.io/ebook-reader/dashboard',
-          // redirectTo: 'http://localhost:3000/ebook-reader/dashboard',
+          redirectTo: 'http://localhost:3000/ebook-reader/dashboard',
         },
       });
 
@@ -54,55 +64,59 @@ function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen !bg-gradient-to-br !from-purple-50 !to-blue-300 flex flex-col justify-center items-center p-4">
-      <div className="max-w-xs w-full mx-auto sm:max-w-sm">
-        <div className="text-center mb-8">
-          <h1 className="mt-4 text-3xl font-semibold !text-gray-900 tracking-tight sm:text-4xl">eBook Reader</h1>
-          <p className="mt-1 text-lg !text-gray-700 sm:text-xl">隨時隨地閱讀和管理你的電子書</p>
-        </div>
+    <Center minHeight="100vh" bgGradient="linear(to-br, purple.50, blue.300)">
+      <Box w="full" maxW="xs" p={4} textAlign="center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Heading as="h1" size="lg" mb={2} color="gray.900">
+            eBook Reader
+          </Heading>
+          <Text fontSize="xl" color="gray.700" mb={6}>
+            隨時隨地閱讀和管理你的電子書
+          </Text>
 
-        <div className="bg-white/80 !backdrop-blur-md py-8 px-6 shadow-lg rounded-xl !border !border-purple-200 transition-all duration-300 hover:shadow-xl">
-          <h2 className="text-lg font-semibold !text-gray-800 mb-6 text-center sm:text-xl">登入你的帳戶</h2>
-
-          {error && <Alert message={error} />}
-
-          <button
-            onClick={handleGitHubLogin}
-            disabled={isLoading}
-            className={`w-full flex items-center justify-center !bg-purple-600 hover:!bg-purple-800 !text-white py-3 px-4 rounded-xl shadow-md transition-all duration-300 focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 ${
-              isLoading ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-            aria-label="使用 GitHub 登入"
+          <Box
+            bg="whiteAlpha.800"
+            backdropFilter="blur(10px)"
+            p={6}
+            shadow="lg"
+            borderRadius="xl"
+            borderColor="purple.200"
+            borderWidth={1}
+            transition="all 0.3s"
+            _hover={{ shadow: 'xl' }}
           >
-            {isLoading ? (
-              <svg
-                className="animate-spin h-5 w-5 mr-3 !text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-            ) : (
-              <span className="flex items-center">
-                <GitHubIcon />
-                使用 GitHub 登入
-              </span>
-            )}
-          </button>
+            <Text fontSize="lg" fontWeight="semibold" color="gray.800" mb={6}>
+              登入你的帳戶
+            </Text>
 
-          <p className="mt-6 text-center text-sm !text-gray-500 sm:text-base">
-          登入即表示你同意我們的服務條款和隱私政策。
-          </p>
-        </div>
-      </div>
-    </div>
+            {error && <Alert message={error} />}
+
+            <Button
+              onClick={handleGitHubLogin}
+              isLoading={isLoading}
+              loadingText="登入中..."
+              colorScheme="purple"
+              variant="solid"
+              w="full"
+              leftIcon={<GitHubIcon />}
+              mb={4}
+              _hover={{ bg: 'purple.700' }}
+              aria-label="使用 GitHub 登入"
+            >
+              使用 GitHub 登入
+            </Button>
+
+            <Text fontSize="sm" color="gray.500">
+              登入即表示你同意我們的服務條款和隱私政策。
+            </Text>
+          </Box>
+        </motion.div>
+      </Box>
+    </Center>
   );
 }
 
