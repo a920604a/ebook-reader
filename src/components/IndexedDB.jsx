@@ -1,4 +1,21 @@
-
+export const clearIndexedDB = async () => {
+    return new Promise((resolve, reject) => {
+    console.log("清除 IndexedDB...");
+      const request = indexedDB.deleteDatabase("ebookStore");
+      request.onsuccess = () => {
+        console.log("IndexedDB 已成功清除");
+        resolve();
+      };
+      request.onerror = (event) => {
+        console.error("清除 IndexedDB 失敗", event);
+        reject(event);
+      };
+      request.onblocked = () => {
+        console.warn("清除 IndexedDB 被阻止，請關閉所有其他頁籤後再試");
+      };
+    });
+  };
+  
 
 // 取得所有書籍
 export const getAllBooksFromIndexedDB = async () => {

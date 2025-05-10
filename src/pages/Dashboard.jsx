@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getBooksFromSupabase, uploadToSupabase, deleteFromSupabase } from "../components/BookManager";
 import { supabase } from '../supabase';
 import { v4 as uuidv4 } from "uuid";
-import { getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
+import { clearIndexedDB, getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
 import { Box, Button, Input, Spinner, Text, VStack, HStack, Card, Heading, useToast } from "@chakra-ui/react";
 
 function Dashboard() {
@@ -24,34 +24,42 @@ function Dashboard() {
     };
 
     useEffect(() => {
-        const fetchBooks = async () => {
-            setLoading(true);
-            const userId = await getUserId();
-            if (!userId) {
-                console.warn("未登入，無法獲取書籍");
-                setLoading(false);
-                return;
-            }
-
-            const localBooks = await getAllBooksFromIndexedDB();
-            const supabaseBooks = await getBooksFromSupabase(userId);
-
-            const missingBooks = supabaseBooks.filter(
-                sb => !localBooks.some(lb => lb.id === sb.id)
-            );
-
-            for (const book of missingBooks) {
-                await saveBookToIndexedDB(book, userId, book.file_url);
-            }
-
-            const allBooks = [...localBooks, ...missingBooks];
-            setBooks(allBooks);
-            setLoading(false);
+        const initialize = async () => {
+        setLoading(true);
+        const userId = await getUserId();
+        if (!userId) {
+        console.warn("未登入，無法獲取書籍");
+        setLoading(false);
+        return;
+        }
+    
+        // 檢查是否為首次載入
+        const isFirstLoad = !sessionStorage.getItem('initialized');
+        if (isFirstLoad) {
+            console.log("首次載入，清除 IndexedDB...");
+            await clearIndexedDB();
+            sessionStorage.setItem('initialized', 'true');
+        }
+        console.log("載入書籍...");
+    
+        const localBooks = await getAllBooksFromIndexedDB();
+        const supabaseBooks = await getBooksFromSupabase(userId);
+    
+        const missingBooks = supabaseBooks.filter(
+        sb => !localBooks.some(lb => lb.id === sb.id)
+        );
+    
+        for (const book of missingBooks) {
+        await saveBookToIndexedDB(book, userId, book.file_url);
+        }
+    
+        const allBooks = [...localBooks, ...missingBooks];
+        setBooks(allBooks);
+        setLoading(false);
         };
-
-        fetchBooks();
+    
+        initialize();
     }, []);
-
     const handleUpload = () => {
         if (file) {
             setLoading(true);
