@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
     Box,
     Heading,
@@ -36,7 +36,10 @@ const getBookById = async (id) => {
     return book;
 };
 
+
 function ReaderPage() {
+    const navigate = useNavigate();
+
     const { bookId } = useParams();
     const [selectedBook, setSelectedBook] = useState(null);
     const [pageNumber, setPageNumber] = useState(1);
@@ -71,8 +74,11 @@ function ReaderPage() {
     }, [bookId, toast]);
 
     const isLoading = !selectedBook;
-
+    const handleBackToDashboard = () => {
+        navigate('/dashboard');
+    };
     return (
+        
         <Box
             bg={darkMode ? "gray.800" : "gray.100"}
             color={darkMode ? "white" : "black"}
@@ -91,12 +97,18 @@ function ReaderPage() {
                 <Heading size="xl" fontWeight="bold" color={darkMode ? "white" : "gray.800"}>
                     {selectedBook ? selectedBook.name : "載入中..."}
                 </Heading>
+                
                 <HStack spacing={4} mt={4}>
                     <Button
                         colorScheme={darkMode ? "gray" : "purple"}
                         onClick={() => setDarkMode(!darkMode)}
                     >
                         {darkMode ? "關閉夜間模式" : "開啟夜間模式"}
+                    </Button>
+                    <Button
+                        colorScheme = "purple"
+                        onClick={handleBackToDashboard}>
+                        返回 Dashboard
                     </Button>
                 </HStack>
                 <Text mt={4}>
