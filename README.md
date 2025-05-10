@@ -125,3 +125,6 @@ For more about Supabase, visit the [Supabase documentation](https://supabase.com
 * [Advanced Configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 * [Deployment](https://facebook.github.io/create-react-app/docs/deployment)
 * [Troubleshooting Build Issues](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## issue
+目前 不支援 indexedDB 做離線使用
