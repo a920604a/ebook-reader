@@ -4,7 +4,7 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 
 ## Project Overview
 
-This project is a modern **React-based ebook reader** application that utilizes **Supabase** for authentication and cloud storage, as well as **IndexedDB** for local caching to enhance user experience and offline access. It is designed to be lightweight and responsive, making it ideal for reading ebooks on various devices.
+This project is a modern **React-based ebook reader** application that utilizes **Supabase** for authentication and cloud storage, as well as **IndexedDB** for local caching to enhance user experience. It is designed to be lightweight and responsive, making it ideal for reading ebooks on various devices.
 
 ### Key Features
 
