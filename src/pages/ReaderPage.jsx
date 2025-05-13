@@ -15,7 +15,7 @@ import { Viewer, Worker } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
-import { getBooksFromSupabase, saveReadingProgress } from '../components/BookManager';
+import { saveReadingProgress } from '../components/BookManager';
 import { supabase } from '../supabase';
 import { openDB } from "../components/IndexedDB";
 
