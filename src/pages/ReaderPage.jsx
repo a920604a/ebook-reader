@@ -15,8 +15,11 @@ import { Viewer, Worker } from "@react-pdf-viewer/core";
 import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import { getBooksFromSupabase, saveReadingProgress } from '../components/BookManager';
+import { supabase } from '../supabase';
 import { openDB } from "../components/IndexedDB";
 
+// 取得書籍的函式
 const getBookById = async (id) => {
     const db = await openDB();
     const transaction = db.transaction(["books"], "readonly");
@@ -36,30 +39,58 @@ const getBookById = async (id) => {
     return book;
 };
 
-
 function ReaderPage() {
     const navigate = useNavigate();
-
     const { bookId } = useParams();
     const [selectedBook, setSelectedBook] = useState(null);
     const [pageNumber, setPageNumber] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [darkMode, setDarkMode] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [userId, setUserId] = useState(null);
+    const [lastReadPage, setLastReadPage] = useState(null);
     const toast = useToast();
-
     const viewerRef = useRef(null);
     const defaultLayoutPluginInstance = defaultLayoutPlugin();
 
+    // 取得用戶 ID 的函式
+    const getUserId = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+            setUserId(user.id);
+            return user.id;
+        }
+        return null;
+    };
+
     useEffect(() => {
-        const fetchBook = async () => {
+        const initialize = async () => {
+            const userId = await getUserId();
+            if (!userId) {
+                console.warn("未登入，無法獲取書籍");
+                setLoading(false);
+                return;
+            }
+
             try {
                 const book = await getBookById(bookId);
                 setSelectedBook(book);
 
-                const bookmark = localStorage.getItem(`bookmark-${bookId}`);
-                if (bookmark) {
-                    setPageNumber(parseInt(bookmark));
+                // 取得上次瀏覽進度
+                const { data, error } = await supabase
+                    .from("reading_progress")
+                    .select("page_number")
+                    .eq("user_id", userId)
+                    .eq("book_id", bookId)
+                    .single();
+
+                if (error && error.code !== "PGRST116") {
+                    console.error("無法取得進度:", error.message);
+                } else if (data) {
+                    setLastReadPage(data.page_number);
+                    setPageNumber(data.page_number);
                 }
+
             } catch (error) {
                 toast({
                     title: "錯誤",
@@ -68,17 +99,30 @@ function ReaderPage() {
                     duration: 3000,
                     isClosable: true,
                 });
+            } finally {
+                setLoading(false);
             }
         };
-        fetchBook();
+
+        initialize();
     }, [bookId, toast]);
 
-    const isLoading = !selectedBook;
+    const isLoading = loading || !selectedBook;
+
+    // 返回到 Dashboard 頁面
     const handleBackToDashboard = () => {
         navigate('/dashboard');
     };
+
+    // 處理頁面變更
+    const handlePageChange = (newPageNumber) => {
+        if (userId) {
+            setPageNumber(newPageNumber);
+            saveReadingProgress(userId, bookId, newPageNumber);
+        }
+    };
+
     return (
-        
         <Box
             bg={darkMode ? "gray.800" : "gray.100"}
             color={darkMode ? "white" : "black"}
@@ -97,6 +141,12 @@ function ReaderPage() {
                 <Heading size="xl" fontWeight="bold" color={darkMode ? "white" : "gray.800"}>
                     {selectedBook ? selectedBook.name : "載入中..."}
                 </Heading>
+
+                {lastReadPage !== null && (
+                    <Text mt={2} color={darkMode ? "gray.300" : "gray.600"}>
+                        上次瀏覽到第 {lastReadPage} 頁
+                    </Text>
+                )}
                 
                 <HStack spacing={4} mt={4}>
                     <Button
@@ -106,38 +156,36 @@ function ReaderPage() {
                         {darkMode ? "關閉夜間模式" : "開啟夜間模式"}
                     </Button>
                     <Button
-                        colorScheme = "purple"
-                        onClick={handleBackToDashboard}>
+                        colorScheme="purple"
+                        onClick={handleBackToDashboard}
+                    >
                         返回 Dashboard
                     </Button>
                 </HStack>
+
                 <Text mt={4}>
                     {pageNumber} / {totalPages} 頁
                 </Text>
-                <Progress value={(pageNumber / totalPages) * 100} colorScheme="purple" />
+                <Progress value={(pageNumber / totalPages) * 100} colorScheme="purple" mt={2} />
             </Box>
-
-            {isLoading ? (
-                <VStack justify="center" align="center" spacing={4} minH="80vh">
-                    <Spinner size="xl" color="purple.600" />
-                    <Text fontSize="lg" color="purple.700">
-                        正在加載書籍...
-                    </Text>
-                </VStack>
-            ) : (
-                <Box bg={darkMode ? "gray.700" : "white"} shadow="md" rounded="lg" mx="auto" p={4}>
-                    <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.6.172/build/pdf.worker.min.js">
-                        <Viewer
-                            fileUrl={selectedBook.file_url}
-                            plugins={[defaultLayoutPluginInstance]}
-                            onDocumentLoad={(e) => setTotalPages(e.doc.numPages)}
-                            onPageChange={(e) => setPageNumber(e.currentPage + 1)}
-                            ref={viewerRef}
-                            className="rounded-lg"
-                        />
-                    </Worker>
-                </Box>
-            )}
+            <VStack spacing={4} px={4}>
+                {isLoading ? (
+                    <Spinner />
+                ) : (
+                    <Box w="full" h="600px" overflow="hidden">
+                        <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.6.172/build/pdf.worker.min.js">
+                            <Viewer
+                                fileUrl={selectedBook.file_url}
+                                ref={viewerRef}
+                                plugin={defaultLayoutPluginInstance}
+                                onPageChange={({ currentPage }) => handlePageChange(currentPage)}
+                                onDocumentLoad={(e) => setTotalPages(e.doc.numPages)}
+                                className="rounded-lg"
+                            />
+                        </Worker>
+                    </Box>
+                )}
+            </VStack>
         </Box>
     );
 }

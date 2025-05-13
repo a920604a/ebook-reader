@@ -26,7 +26,6 @@ export const uploadToSupabase = async (book, user_id) => {
 
   try {
     // 產生唯一檔名
-    // 產生安全的檔案名稱
     const slugify = (str) => str.normalize("NFKD")
         .replace(/[\u0300-\u036f]/g, "") // 移除變音符號
         .replace(/[^\w\s-]/g, "")        // 移除特殊符號
@@ -34,17 +33,15 @@ export const uploadToSupabase = async (book, user_id) => {
         .replace(/\s+/g, "-")            // 空白變 -
         .toLowerCase();
 
-    const fileName = `${slugify(book.name)}-${Date.now()}.pdf`; // 改成 .pdf
+    const fileName = `${slugify(book.name)}-${Date.now()}.pdf`;
 
     // 將 Base64 資料轉換為 Uint8Array
     const base64Data = book.data.split(",")[1]; // 移除 "data:application/pdf;base64,"
     const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
-
     const file = new File([binaryData], fileName, { type: "application/pdf" });
 
-
-    // 上傳至 Storage bucket（books/user_id/file.pdf）
+    // 上傳至 Storage bucket
     const { error: storageError } = await supabase
       .storage
       .from("books")
@@ -55,7 +52,6 @@ export const uploadToSupabase = async (book, user_id) => {
       return;
     }
 
-    
     // 取得公開 URL
     const { data: urlData } = supabase
       .storage
@@ -77,7 +73,7 @@ export const uploadToSupabase = async (book, user_id) => {
     } else {
       console.log(`✅ 書籍 ${book.name} 上傳成功`);
     }
-    
+
     return fileUrl;
 
   } catch (err) {
@@ -92,7 +88,6 @@ export const deleteFromSupabase = async (bookName, user_id) => {
   console.time("deleteFromSupabase");
 
   try {
-    // 先查詢該書籍紀錄
     const { data: books, error: fetchError } = await supabase
       .from("books")
       .select("*")
@@ -106,7 +101,6 @@ export const deleteFromSupabase = async (bookName, user_id) => {
 
     const path = books[0].file_url.split('/storage/v1/object/public/books/')[1];
 
-    // 刪除 Storage 檔案
     const { error: storageError } = await supabase
       .storage
       .from("books")
@@ -116,7 +110,6 @@ export const deleteFromSupabase = async (bookName, user_id) => {
       console.error("Storage 刪除失敗:", storageError.message);
     }
 
-    // 刪除 metadata
     const { error: deleteError } = await supabase
       .from("books")
       .delete()
@@ -141,7 +134,6 @@ export const viewBookContent = async (bookName, user_id) => {
   console.time("viewBookContent");
 
   try {
-    // 先查詢該書籍紀錄
     const { data: books, error: fetchError } = await supabase
       .from("books")
       .select("*")
@@ -153,10 +145,8 @@ export const viewBookContent = async (bookName, user_id) => {
       return null;
     }
 
-    // 取得檔案 URL
     const fileUrl = books[0].file_url;
 
-    // 下載檔案內容（假設是 text 檔）
     const response = await fetch(fileUrl);
     const textContent = await response.text();
 
@@ -167,5 +157,53 @@ export const viewBookContent = async (bookName, user_id) => {
     console.error("❌ 讀取書籍內容錯誤:", err);
     console.timeEnd("viewBookContent");
     return null;
+  }
+};
+
+// 儲存進度
+export const saveReadingProgress = async (userId, bookId, pageNumber) => {
+  try {
+    // console.log("儲存進度:", { userId, bookId, pageNumber });
+    
+    // 檢查是否已有進度紀錄
+    const { data: existingRecord, error: selectError } = await supabase
+      .from("reading_progress")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("book_id", bookId)
+      .single();
+
+    if (selectError && selectError.code !== "PGRST116") {
+      // PGRST116 = No rows found (這是正常情況)
+      throw new Error("檢查進度失敗");
+    }
+
+    if (existingRecord) {
+      // 更新現有的進度
+      const { error: updateError } = await supabase
+        .from("reading_progress")
+        .update({ page_number: pageNumber })
+        .eq("user_id", userId)
+        .eq("book_id", bookId);
+
+      if (updateError) {
+        throw new Error("更新進度失敗");
+      }
+
+      console.log("進度已更新");
+    } else {
+      // 插入新的進度
+      const { error: insertError } = await supabase
+        .from("reading_progress")
+        .insert({ user_id: userId, book_id: bookId, page_number: pageNumber });
+
+      if (insertError) {
+        throw new Error("插入進度失敗");
+      }
+
+      console.log("進度已儲存");
+    }
+  } catch (error) {
+    console.error("儲存進度失敗:", error.message);
   }
 };

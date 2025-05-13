@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getBooksFromSupabase, uploadToSupabase, deleteFromSupabase } from "../components/BookManager";
-import { supabase } from '../supabase';
+import { supabase } from "../supabase";
 import { v4 as uuidv4 } from "uuid";
 import { clearIndexedDB, getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
 import { Box, Button, Input, Spinner, Text, VStack, HStack, Card, Heading, useToast } from "@chakra-ui/react";
@@ -12,8 +12,9 @@ function Dashboard() {
     const [file, setFile] = useState(null);
     const [loading, setLoading] = useState(false);
     const [userName, setUserName] = useState(""); // 用戶名稱
-    const toast = useToast(); // 用於顯示提示訊息
+    const toast = useToast();
 
+    // 取得用戶 ID
     const getUserId = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -23,43 +24,80 @@ function Dashboard() {
         return null;
     };
 
+    // 取得上次瀏覽進度
+    const getLastPage = async (bookId, userId) => {
+        try {
+            // 從 Supabase 取得進度
+            const { data, error } = await supabase
+                .from("reading_progress")
+                .select("page_number")
+                .eq("user_id", userId)
+                .eq("book_id", bookId)
+                .single();
+
+            if (error && error.code !== "PGRST116") {
+                console.error("無法取得進度:", error.message);
+                return 0;
+            }
+
+            // 如果 Supabase 有進度紀錄
+            if (data) return data.page_number;
+
+            // 如果 Supabase 沒有紀錄，從 localStorage 讀取
+            const bookmark = localStorage.getItem(`bookmark-${bookId}`);
+            return bookmark ? parseInt(bookmark) : 0;
+        } catch (err) {
+            console.error("讀取進度錯誤:", err);
+            return 0;
+        }
+    };
+
+    // 初始化書籍列表
     useEffect(() => {
         const initialize = async () => {
-        setLoading(true);
-        const userId = await getUserId();
-        if (!userId) {
-        console.warn("未登入，無法獲取書籍");
-        setLoading(false);
-        return;
-        }
-    
-        // 檢查是否為首次載入
-        const isFirstLoad = !sessionStorage.getItem('initialized');
-        if (isFirstLoad) {
-            console.log("首次載入，清除 IndexedDB...");
-            await clearIndexedDB();
-            sessionStorage.setItem('initialized', 'true');
-        }
-        console.log("載入書籍...");
-    
-        const localBooks = await getAllBooksFromIndexedDB();
-        const supabaseBooks = await getBooksFromSupabase(userId);
-    
-        const missingBooks = supabaseBooks.filter(
-        sb => !localBooks.some(lb => lb.id === sb.id)
-        );
-    
-        for (const book of missingBooks) {
-        await saveBookToIndexedDB(book, userId, book.file_url);
-        }
-    
-        const allBooks = [...localBooks, ...missingBooks];
-        setBooks(allBooks);
-        setLoading(false);
+            setLoading(true);
+            const userId = await getUserId();
+            if (!userId) {
+                console.warn("未登入，無法獲取書籍");
+                setLoading(false);
+                return;
+            }
+
+            const isFirstLoad = !sessionStorage.getItem("initialized");
+            if (isFirstLoad) {
+                console.log("首次載入，清除 IndexedDB...");
+                await clearIndexedDB();
+                sessionStorage.setItem("initialized", "true");
+            }
+
+            console.log("載入書籍...");
+
+            const localBooks = await getAllBooksFromIndexedDB();
+            const supabaseBooks = await getBooksFromSupabase(userId);
+
+            const missingBooks = supabaseBooks.filter(
+                sb => !localBooks.some(lb => lb.id === sb.id)
+            );
+
+            for (const book of missingBooks) {
+                await saveBookToIndexedDB(book, userId, book.file_url);
+            }
+
+            const allBooks = [...localBooks, ...missingBooks];
+
+            // 設定每本書的上次瀏覽頁數
+            for (const book of allBooks) {
+                book.lastPage = await getLastPage(book.id, userId);
+            }
+
+            setBooks(allBooks);
+            setLoading(false);
         };
-    
+
         initialize();
     }, []);
+
+    // 上傳書籍
     const handleUpload = () => {
         if (file) {
             setLoading(true);
@@ -122,6 +160,7 @@ function Dashboard() {
         }
     };
 
+    // 刪除書籍
     const handleDelete = async (id, name) => {
         await deleteBookFromIndexedDB(id);
 
@@ -141,6 +180,7 @@ function Dashboard() {
         });
     };
 
+    // 開始閱讀
     const handleRead = (id) => {
         navigate(`/reader/${id}`);
     };
@@ -152,7 +192,6 @@ function Dashboard() {
                     電子書目錄
                 </Heading>
 
-                {/* 歡迎語 */}
                 {userName && (
                     <Text fontSize="xl" color="purple.500" mb={4}>
                         歡迎回來，{userName}！
@@ -194,19 +233,14 @@ function Dashboard() {
                                         <Text fontSize="xl" fontWeight="bold">
                                             {book.name}
                                         </Text>
+                                        <Text fontSize="md" color="gray.500">
+                                            上次瀏覽進度: {book.lastPage ? `${book.lastPage} 頁` : "尚未閱讀"}
+                                        </Text>
                                         <HStack spacing={4}>
-                                            <Button
-                                                onClick={() => handleRead(book.id)}
-                                                colorScheme="green"
-                                                size="sm"
-                                            >
+                                            <Button onClick={() => handleRead(book.id)} colorScheme="green" size="sm">
                                                 閱讀
                                             </Button>
-                                            <Button
-                                                onClick={() => handleDelete(book.id, book.name)}
-                                                colorScheme="red"
-                                                size="sm"
-                                            >
+                                            <Button onClick={() => handleDelete(book.id, book.name)} colorScheme="red" size="sm">
                                                 刪除
                                             </Button>
                                         </HStack>
