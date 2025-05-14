@@ -101,6 +101,7 @@ export const deleteFromSupabase = async (bookName, user_id) => {
     }
 
     // 2. 刪除 Storage 中的檔案
+    const bookId = books[0].id;
     const path = books[0].file_url.split('/storage/v1/object/public/books/')[1];
 
     const { error: storageError } = await supabase
