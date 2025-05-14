@@ -113,7 +113,7 @@ export const deleteFromSupabase = async (bookName, user_id) => {
       console.error("Storage 刪除失敗:", storageError.message);
     }
 
-    // 3. 刪除 `books` 資料表中的書籍紀錄
+    // 3. 刪除 `books` 資料表中的書籍紀錄，因為有外建，reading_progress 也會被刪除
     const { error: deleteError } = await supabase
       .from("books")
       .delete()
@@ -125,17 +125,17 @@ export const deleteFromSupabase = async (bookName, user_id) => {
     } 
 
     // 4. 刪除 `reading_progress` 中的對應進度
-    const { error: progressDeleteError } = await supabase
-      .from("reading_progress")
-      .delete()
-      .eq("user_id", user_id)
-      .eq("book_id", bookId);
+    // const { error: progressDeleteError } = await supabase
+    //   .from("reading_progress")
+    //   .delete()
+    //   .eq("user_id", user_id)
+    //   .eq("book_id", bookId);
 
-    if (progressDeleteError) {
-      console.error("刪除閱讀進度失敗:", progressDeleteError.message);
-    } else {
-      console.log(`📕 書籍 ${bookName} 以及相關進度紀錄已成功刪除`);
-    }
+    // if (progressDeleteError) {
+    //   console.error("刪除閱讀進度失敗:", progressDeleteError.message);
+    // } else {
+    //   console.log(`📕 書籍 ${bookName} 以及相關進度紀錄已成功刪除`);
+    // }
 
 
 
