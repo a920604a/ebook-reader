@@ -5,7 +5,7 @@ import { supabase } from "../supabase";
 import { v4 as uuidv4 } from "uuid";
 import { clearIndexedDB, getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
 import {
-    Box, Button, Input, Text, VStack, HStack, Card, Heading, useToast, Divider, Badge, useDisclosure, Select, Progress, FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter
+    Spacer, Box, Button, Input, Text, VStack, HStack, Card, Heading, useToast, Divider, Badge, useDisclosure, Select, Progress, FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter
 } from "@chakra-ui/react";
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
