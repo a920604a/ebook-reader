@@ -332,7 +332,7 @@ function Dashboard() {
                                     ? "yellow"
                                     : "red"
                             }>
-                                {book.lastPage === book.totalPages
+                                {book.lastPage === book.totalPages || book.lastPage === book.totalPages -1 
                                     ? "已閱讀"
                                     : book.lastPage > 0
                                     ? "正在讀"
@@ -398,7 +398,7 @@ function Dashboard() {
                     }} />
                 </Box>
             </HStack>
-             </Box>
+            </Box>
     );
 }
 
