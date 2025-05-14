@@ -1,20 +1,65 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getBooksFromSupabase, uploadToSupabase, deleteFromSupabase } from "../components/BookManager";
+import { getBooksFromSupabase, uploadToSupabase, deleteFromSupabase, getLastPage } from "../components/BookManager";
 import { supabase } from "../supabase";
 import { v4 as uuidv4 } from "uuid";
 import { clearIndexedDB, getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
-import { Box, Button, Input, Spinner, Text, VStack, HStack, Card, Heading, useToast } from "@chakra-ui/react";
+import {
+    Box, Button, Input, Text, VStack, HStack, Card, Heading, useToast, Divider, Badge, useDisclosure,  Select, Progress, FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter
+} from "@chakra-ui/react";
+import { Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 function Dashboard() {
     const navigate = useNavigate();
     const [books, setBooks] = useState([]);
     const [file, setFile] = useState(null);
+    const [category, setCategory] = useState("");
     const [loading, setLoading] = useState(false);
-    const [userName, setUserName] = useState(""); // 用戶名稱
+    const [userName, setUserName] = useState("");
+    const [stats, setStats] = useState({ total: 0, read: 0, unread: 0, reading: 0 });
+    const [searchQuery, setSearchQuery] = useState(""); // 搜尋關鍵字
+    const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(""); // 篩選選擇的分類
     const toast = useToast();
+    const { isOpen, onOpen, onClose } = useDisclosure();
 
-    // 取得用戶 ID
+    const categories = ["科技", "小說", "教育", "自我提升", "歷史", "其他"];
+
+    // 分類圓餅圖資料
+    const getCategoryData = () => {
+        const categoryCount = books.reduce((acc, book) => {
+            if (book.category) {
+                acc[book.category] = (acc[book.category] || 0) + 1;
+            }
+            return acc;
+        }, {});
+
+        return {
+            labels: Object.keys(categoryCount),
+            datasets: [{
+                data: Object.values(categoryCount),
+                backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#FF9F40', '#C5E1A5'],
+            }]
+        };
+    };
+
+    // 已讀/未讀/正在讀圓餅圖資料
+    const getStatusData = () => {
+        const readCount = books.filter(b => b.lastPage > 0 && b.lastPage < b.totalPages ).length;
+        const unreadCount = books.filter(b => b.lastPage === 0).length;
+        const readingCount = books.filter(b => b.status === 'reading').length;
+
+        return {
+            labels: ["已閱讀", "未閱讀", "正在讀"],
+            datasets: [{
+                data: [readCount, unreadCount, readingCount],
+                backgroundColor: ['#36A2EB', '#FF6384', '#FFCE56'],
+            }]
+        };
+    };
+
     const getUserId = async () => {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -24,44 +69,17 @@ function Dashboard() {
         return null;
     };
 
-    // 取得上次瀏覽進度
-    const getLastPage = async (bookId, userId) => {
-        try {
-            // 從 Supabase 取得進度
-            const { data, error } = await supabase
-                .from("reading_progress")
-                .select("page_number")
-                .eq("user_id", userId)
-                .eq("book_id", bookId)
-                .single();
-
-            if (error && error.code !== "PGRST116") {
-                console.error("無法取得進度:", error.message);
-                return 0;
-            }
-
-            // 如果 Supabase 有進度紀錄
-            if (data) return data.page_number;
-
-            // 如果 Supabase 沒有紀錄，從 localStorage 讀取
-            const bookmark = localStorage.getItem(`bookmark-${bookId}`);
-            return bookmark ? parseInt(bookmark) : 0;
-        } catch (err) {
-            console.error("讀取進度錯誤:", err);
-            return 0;
-        }
-    };
-
-    // 初始化書籍列表
     useEffect(() => {
         const initialize = async () => {
             setLoading(true);
             const userId = await getUserId();
+            
             if (!userId) {
                 console.warn("未登入，無法獲取書籍");
                 setLoading(false);
                 return;
             }
+
 
             const isFirstLoad = !sessionStorage.getItem("initialized");
             if (isFirstLoad) {
@@ -70,10 +88,11 @@ function Dashboard() {
                 sessionStorage.setItem("initialized", "true");
             }
 
-            console.log("載入書籍...");
 
             const localBooks = await getAllBooksFromIndexedDB();
             const supabaseBooks = await getBooksFromSupabase(userId);
+            
+            console.log("載入書籍...");
 
             const missingBooks = supabaseBooks.filter(
                 sb => !localBooks.some(lb => lb.id === sb.id)
@@ -84,83 +103,121 @@ function Dashboard() {
             }
 
             const allBooks = [...localBooks, ...missingBooks];
+            let total = 0, read = 0, unread = 0, reading = 0;
 
-            // 設定每本書的上次瀏覽頁數
             for (const book of allBooks) {
-                book.lastPage = await getLastPage(book.id, userId);
+                book.lastPage = await getLastPage(book.id, userId) || 0;
+                book.totalPages = book.totalPages || 100; // 假設每本書有 100 頁
+                total += 1;
+                if (book.lastPage === 0) unread += 1;
+                else if (book.status === 'reading') reading += 1;
+                else read += 1;
             }
 
             setBooks(allBooks);
+            setStats({ total, read, unread, reading });
             setLoading(false);
         };
 
         initialize();
     }, []);
 
-    // 上傳書籍
-    const handleUpload = () => {
-        if (file) {
-            setLoading(true);
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const newBook = {
-                    id: uuidv4(),
-                    name: file.name,
-                    data: e.target.result,
-                };
+    // 搜尋功能：過濾書籍名稱
+    const filteredBooks = books.filter((book) => {
+        return book.name.toLowerCase().includes(searchQuery.toLowerCase());
+    });
 
-                const userId = await getUserId();
-                if (!userId) {
-                    toast({
-                        title: "未登入",
-                        description: "請先登入後再上傳書籍",
-                        status: "error",
-                        duration: 3000,
-                        isClosable: true,
-                    });
-                    setLoading(false);
-                    return;
-                }
+    // 篩選功能：根據分類過濾書籍
+    const filteredByCategory = filteredBooks.filter((book) => {
+        return selectedCategoryFilter ? book.category === selectedCategoryFilter : true;
+    });
 
-                const fileUrl = await uploadToSupabase(newBook, userId);
-                if (!fileUrl) {
-                    toast({
-                        title: "上傳失敗",
-                        description: "檔案 URL 取得失敗，無法儲存至 IndexedDB",
-                        status: "error",
-                        duration: 3000,
-                        isClosable: true,
-                    });
-                    setLoading(false);
-                    return;
-                }
+   const handleFileUpload = async () => {
+    if (!file || !category) {
+        toast({
+            title: "上傳失敗",
+            description: "請選擇檔案和分類標籤。",
+            status: "error",
+            duration: 2000,
+            isClosable: true,
+        });
+        return;
+    }
 
-                await saveBookToIndexedDB(newBook, userId, fileUrl);
-                const updatedBooks = await getAllBooksFromIndexedDB();
-                setBooks(updatedBooks);
-                setFile(null);
-                setLoading(false);
-                toast({
-                    title: "上傳成功",
-                    description: "電子書已成功上傳並儲存。",
-                    status: "success",
-                    duration: 3000,
-                    isClosable: true,
-                });
-            };
-            reader.readAsDataURL(file);
-        } else {
+    setLoading(true);
+
+    const userId = await getUserId();
+    if (!userId) {
+        toast({
+            title: "未登入",
+            description: "請先登入後再上傳書籍",
+            status: "error",
+            duration: 3000,
+            isClosable: true,
+        });
+        setLoading(false);
+        return;
+    }
+
+    // 使用 FileReader 讀取檔案
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const newBook = {
+            id: uuidv4(),
+            name: file.name,
+            category: category,
+            data: e.target.result, // 使用 FileReader 讀取的檔案數據
+            // lastPage: 0,
+            // totalPages: 100, // TODO: 預設100頁，reader 讀取後更新
+        };
+
+        // 上傳檔案至 Supabase
+        const fileUrl = await uploadToSupabase(newBook, userId);
+        // const fileName = uuidv4() + "-" + file.name;
+        // const { data, error } = await supabase.storage.from("ebooks").upload(fileName, file);
+
+        if (!fileUrl) {
+            setLoading(false);
             toast({
-                title: "錯誤",
-                description: "請選擇一個檔案來上傳！",
+                title: "上傳失敗",
+                description: "檔案上傳失敗，請再試一次。",
                 status: "error",
-                duration: 3000,
+                duration: 2000,
                 isClosable: true,
             });
+            return;
         }
+
+        // 儲存書籍資料
+        // newBook.file_url = data?.Key;
+
+        // 儲存書籍資料到 IndexedDB
+        await saveBookToIndexedDB(newBook, userId, fileUrl);
+
+        // 更新書籍列表
+        const updatedBooks = await getAllBooksFromIndexedDB();
+        setBooks(updatedBooks);
+
+        setFile(null);
+        setCategory("");
+        setLoading(false);
+
+        toast({
+            title: "上傳成功",
+            description: "電子書已成功上傳並儲存。",
+            status: "success",
+            duration: 3000,
+            isClosable: true,
+        });
+
+        // 關閉彈跳視窗
+        onClose();
     };
 
-    // 刪除書籍
+    reader.readAsDataURL(file);
+};
+
+      // 刪除書籍
     const handleDelete = async (id, name) => {
         await deleteBookFromIndexedDB(id);
 
@@ -179,81 +236,115 @@ function Dashboard() {
             isClosable: true,
         });
     };
-
-    // 開始閱讀
+      // 開始閱讀
     const handleRead = (id) => {
         navigate(`/reader/${id}`);
     };
 
     return (
         <Box p={8} bg="gray.100" minH="100vh">
-            <VStack spacing={6} align="stretch">
-                <Heading as="h1" size="xl" color="purple.600">
-                    電子書目錄
-                </Heading>
+            <Heading as="h1" size="xl" color="purple.600">電子書目錄</Heading>
+            {userName && <Text fontSize="xl" color="purple.500" mb={4}>歡迎回來，{userName}！</Text>}
+            <Divider mb={6} />
 
-                {userName && (
-                    <Text fontSize="xl" color="purple.500" mb={4}>
-                        歡迎回來，{userName}！
-                    </Text>
-                )}
+            {/* 搜尋功能 */}
+            <FormControl mb={4}>
+                <FormLabel>搜尋書籍</FormLabel>
+                <Input
+                    type="text"
+                    placeholder="輸入書名搜尋"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                />
+            </FormControl>
 
-                <HStack spacing={4}>
-                    <Input
-                        type="file"
-                        accept="application/pdf"
-                        onChange={(e) => setFile(e.target.files[0])}
-                        variant="flushed"
-                        size="lg"
-                        w="auto"
-                    />
-                    <Button
-                        onClick={handleUpload}
-                        colorScheme="purple"
-                        size="lg"
-                        isLoading={loading}
-                    >
-                        上傳電子書
-                    </Button>
-                </HStack>
+            {/* 篩選功能 */}
+            <FormControl mb={6}>
+                <FormLabel>選擇分類</FormLabel>
+                <Select value={selectedCategoryFilter} onChange={(e) => setSelectedCategoryFilter(e.target.value)}>
+                    <option value="">所有分類</option>
+                    {categories.map((cat) => (
+                        <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                </Select>
+            </FormControl>
 
-                {loading ? (
-                    <HStack justify="center" align="center" spacing={4}>
-                        <Spinner size="xl" color="purple.500" />
-                        <Text fontSize="lg" color="gray.600">
-                            載入中...
-                        </Text>
-                    </HStack>
-                ) : (
-                    <VStack spacing={4} align="stretch">
-                        {books.length > 0 ? (
-                            books.map((book) => (
-                                <Card key={book.id} p={5} shadow="lg" rounded="md" bg="white">
-                                    <HStack justify="space-between" align="center">
-                                        <Text fontSize="xl" fontWeight="bold">
-                                            {book.name}
-                                        </Text>
-                                        <Text fontSize="md" color="gray.500">
-                                            上次瀏覽進度: {book.lastPage ? `${book.lastPage} 頁` : "尚未閱讀"}
-                                        </Text>
-                                        <HStack spacing={4}>
-                                            <Button onClick={() => handleRead(book.id)} colorScheme="green" size="sm">
+            {/* 上傳電子書按鈕 */}
+            <Button colorScheme="teal" onClick={onOpen} mb={6}>
+                上傳電子書
+            </Button>
+
+            {/* 彈跳視窗 */}
+            <Modal isOpen={isOpen} onClose={onClose}>
+                <ModalOverlay />
+                <ModalContent>
+                    <ModalHeader>上傳電子書</ModalHeader>
+                    <ModalCloseButton />
+                    <ModalBody>
+                        <VStack spacing={4}>
+                            <FormControl isRequired>
+                                <FormLabel>選擇檔案</FormLabel>
+                                <Input type="file" onChange={(e) => setFile(e.target.files[0])} />
+                            </FormControl>
+                            <FormControl isRequired>
+                                <FormLabel>選擇分類</FormLabel>
+                                <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                                    <option value="">選擇分類</option>
+                                    {categories.map((cat) => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </VStack>
+                    </ModalBody>
+
+                    <ModalFooter>
+                        <Button colorScheme="blue" onClick={handleFileUpload} isLoading={loading}>
+                            上傳
+                        </Button>
+                        <Button colorScheme="gray" onClick={onClose}>取消</Button>
+                    </ModalFooter>
+                </ModalContent>
+            </Modal>
+
+          {/* 統計資料 */}
+            <Text fontSize="lg" mb={4}>總書籍數量: {stats.total} / 已讀: {stats.read} / 未讀: {stats.unread} / 正在讀: {stats.reading}</Text>
+
+
+            {/* 書籍列表 */}
+            <VStack spacing={4} width="100%">
+                {filteredByCategory.map((book) => (
+                    <Card key={book.id} bg="white" w="100%" p={4} shadow="md">
+                        <HStack justify="space-between">
+                            <Text fontSize="lg" fontWeight="bold">{book.name}</Text>
+                            <Badge colorScheme={book.lastPage > 0 ? "green" : "red"}>
+                                {book.lastPage > 0 ? "已閱讀" : "未閱讀"}
+                            </Badge>
+                        </HStack>
+                        <Progress value={(book.lastPage / book.totalPages) * 100} colorScheme="green" size="sm" mt={2} />
+                        <HStack mt={2}>
+                            
+                            <Button onClick={() => handleRead(book.id)} colorScheme="teal" size="sm">
                                                 閱讀
                                             </Button>
-                                            <Button onClick={() => handleDelete(book.id, book.name)} colorScheme="red" size="sm">
+                            
+                            <Button onClick={() => handleDelete(book.id, book.name)} colorScheme="red" size="sm">
                                                 刪除
                                             </Button>
-                                        </HStack>
-                                    </HStack>
-                                </Card>
-                            ))
-                        ) : (
-                            <Text color="gray.500">目前沒有任何電子書。</Text>
-                        )}
-                    </VStack>
-                )}
-            </VStack>
-        </Box>
+                        </HStack>
+                    </Card>
+                ))}
+            </VStack>       
+            {/* 底部圓餅圖 */}
+            <HStack mt={8} spacing={8} justify="center">
+                <Box width="45%">
+                    <Doughnut data={getCategoryData()} options={{ responsive: true }} />
+                </Box>
+                <Box width="45%">
+                    <Doughnut data={getStatusData()} options={{ responsive: true }} />
+                </Box>
+            </HStack>
+             </Box>
     );
 }
 

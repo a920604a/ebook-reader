@@ -222,3 +222,31 @@ export const saveReadingProgress = async (userId, bookId, pageNumber) => {
     console.error("儲存進度失敗:", error.message);
   }
 };
+
+
+export const getLastPage = async (bookId, userId) => {
+        try {
+            // 從 Supabase 取得進度
+            const { data, error } = await supabase
+                .from("reading_progress")
+                .select("page_number")
+                .eq("user_id", userId)
+                .eq("book_id", bookId)
+                .single();
+
+            if (error && error.code !== "PGRST116") {
+                console.error("無法取得進度:", error.message);
+                return 0;
+            }
+
+            // 如果 Supabase 有進度紀錄
+            if (data) return data.page_number;
+
+            // 如果 Supabase 沒有紀錄，從 localStorage 讀取
+            const bookmark = localStorage.getItem(`bookmark-${bookId}`);
+            return bookmark ? parseInt(bookmark) : 0;
+        } catch (err) {
+            console.error("讀取進度錯誤:", err);
+            return 0;
+        }
+    };
