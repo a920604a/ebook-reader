@@ -66,6 +66,7 @@ export const uploadToSupabase = async (book, user_id) => {
       name: book.name,
       user_id,
       file_url: fileUrl,
+      category: book.category
     }]);
 
     if (insertError) {
@@ -112,7 +113,8 @@ export const deleteFromSupabase = async (bookName, user_id) => {
     if (storageError) {
       console.error("Storage 刪除失敗:", storageError.message);
     }
-      // 3. 刪除 `reading_progress` 中的對應進度
+
+    // 3. 刪除 `reading_progress` 中的對應進度
     const { error: progressDeleteError } = await supabase
       .from("reading_progress")
       .delete()
@@ -176,7 +178,7 @@ export const viewBookContent = async (bookName, user_id) => {
 };
 
 // 儲存進度
-export const saveReadingProgress = async (userId, bookId, pageNumber) => {
+export const saveReadingProgress = async (userId, bookId, pageNumber, totalPages) => {
   try {
     // console.log("儲存進度:", { userId, bookId, pageNumber });
     
@@ -197,9 +199,10 @@ export const saveReadingProgress = async (userId, bookId, pageNumber) => {
       // 更新現有的進度
       const { error: updateError } = await supabase
         .from("reading_progress")
-        .update({ page_number: pageNumber })
+        .update({ page_number: pageNumber, "total_page": totalPages})
         .eq("user_id", userId)
-        .eq("book_id", bookId);
+        .eq("book_id", bookId)
+        
 
       if (updateError) {
         throw new Error("更新進度失敗");
@@ -210,7 +213,7 @@ export const saveReadingProgress = async (userId, bookId, pageNumber) => {
       // 插入新的進度
       const { error: insertError } = await supabase
         .from("reading_progress")
-        .insert({ user_id: userId, book_id: bookId, page_number: pageNumber });
+        .insert({ user_id: userId, book_id: bookId, page_number: pageNumber, total_page: totalPages });
 
       if (insertError) {
         throw new Error("插入進度失敗");
@@ -223,30 +226,44 @@ export const saveReadingProgress = async (userId, bookId, pageNumber) => {
   }
 };
 
+export const getReadingProgress = async (bookId, userId) => {
+    try {
+        // 從 Supabase 取得閱讀進度
+        const { data, error } = await supabase
+            .from("reading_progress")
+            .select("page_number, last_read_time, total_page")
+            .eq("user_id", userId)
+            .eq("book_id", bookId)
+            .single();
 
-export const getLastPage = async (bookId, userId) => {
-        try {
-            // 從 Supabase 取得進度
-            const { data, error } = await supabase
-                .from("reading_progress")
-                .select("page_number")
-                .eq("user_id", userId)
-                .eq("book_id", bookId)
-                .single();
-
-            if (error && error.code !== "PGRST116") {
-                console.error("無法取得進度:", error.message);
-                return 0;
-            }
-
-            // 如果 Supabase 有進度紀錄
-            if (data) return data.page_number;
-
-            // 如果 Supabase 沒有紀錄，從 localStorage 讀取
-            const bookmark = localStorage.getItem(`bookmark-${bookId}`);
-            return bookmark ? parseInt(bookmark) : 0;
-        } catch (err) {
-            console.error("讀取進度錯誤:", err);
-            return 0;
+        // 如果 Supabase 查詢有錯誤且不是 "PGRST116" (資料不存在)
+        if (error && error.code !== "PGRST116") {
+            console.error("無法取得閱讀進度:", error.message);
+            return { page_number: 0, last_read_time: null, total_page: 0 };
         }
-    };
+
+        // 如果有 Supabase 紀錄
+        if (data) {
+            const { page_number, last_read_time, total_page } = data;
+            return {
+                page_number: page_number || 0,
+                last_read_time: last_read_time || null,
+                total_page: total_page || 0,
+            };
+        }
+
+        // 如果 Supabase 沒有紀錄，從 localStorage 讀取
+        const pageNumber = parseInt(localStorage.getItem(`bookmark-${bookId}`)) || 0;
+        const totalPages = parseInt(localStorage.getItem(`total-pages-${bookId}`)) || 0;
+
+        return {
+            page_number: pageNumber,
+            last_read_time: null,
+            total_page: totalPages,
+        };
+        
+    } catch (err) {
+        console.error("讀取閱讀進度錯誤:", err);
+        return { page_number: 0, last_read_time: null, total_page: 0 };
+    }
+};

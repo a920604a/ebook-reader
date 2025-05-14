@@ -118,7 +118,7 @@ function ReaderPage() {
     const handlePageChange = (newPageNumber) => {
         if (userId) {
             setPageNumber(newPageNumber);
-            saveReadingProgress(userId, bookId, newPageNumber);
+            saveReadingProgress(userId, bookId, newPageNumber, totalPages);
         }
     };
 

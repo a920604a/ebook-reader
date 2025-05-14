@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getBooksFromSupabase, uploadToSupabase, deleteFromSupabase, getLastPage } from "../components/BookManager";
+import { getBooksFromSupabase, uploadToSupabase, deleteFromSupabase, getReadingProgress } from "../components/BookManager";
 import { supabase } from "../supabase";
 import { v4 as uuidv4 } from "uuid";
 import { clearIndexedDB, getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
@@ -47,9 +47,9 @@ function Dashboard() {
 
     // 已讀/未讀/正在讀圓餅圖資料
     const getStatusData = () => {
-        const readCount = books.filter(b => b.lastPage > 0 && b.lastPage < b.totalPages ).length;
+        const readCount = books.filter(b =>  b.lastPage === b.totalPages ).length;
         const unreadCount = books.filter(b => b.lastPage === 0).length;
-        const readingCount = books.filter(b => b.status === 'reading').length;
+        const readingCount = books.filter(b => b.lastPage > 0 && b.lastPage < b.totalPages).length;
 
         return {
             labels: ["已閱讀", "未閱讀", "正在讀"],
@@ -102,17 +102,22 @@ function Dashboard() {
                 await saveBookToIndexedDB(book, userId, book.file_url);
             }
 
+            console.log(" supabaseBooks", supabaseBooks);
+            console.log(" localBooks", localBooks);
             const allBooks = [...localBooks, ...missingBooks];
             let total = 0, read = 0, unread = 0, reading = 0;
 
             for (const book of allBooks) {
-                book.lastPage = await getLastPage(book.id, userId) || 0;
-                book.totalPages = book.totalPages || 100; // 假設每本書有 100 頁
+                const progress = await getReadingProgress (book.id, userId);
+                book.lastPage = progress.page_number || 0;
+                book.totalPages = progress.total_page  || 100; // 假設每本書有 100 頁
+                book.last_read_time = book.last_read_time || new Date().toISOString();
                 total += 1;
                 if (book.lastPage === 0) unread += 1;
                 else if (book.status === 'reading') reading += 1;
                 else read += 1;
             }
+            console.log("書籍載入完成", allBooks);
 
             setBooks(allBooks);
             setStats({ total, read, unread, reading });
@@ -129,10 +134,10 @@ function Dashboard() {
 
     // 篩選功能：根據分類過濾書籍
     const filteredByCategory = filteredBooks.filter((book) => {
-        return selectedCategoryFilter ? book.category === selectedCategoryFilter : true;
+        return selectedCategoryFilter ? book.category === selectedCategoryFilter  : true;
     });
 
-   const handleFileUpload = async () => {
+    const handleFileUpload = async () => {
     if (!file || !category) {
         toast({
             title: "上傳失敗",
@@ -236,7 +241,7 @@ function Dashboard() {
             isClosable: true,
         });
     };
-      // 開始閱讀
+    // 開始閱讀
     const handleRead = (id) => {
         navigate(`/reader/${id}`);
     };
@@ -317,8 +322,25 @@ function Dashboard() {
                     <Card key={book.id} bg="white" w="100%" p={4} shadow="md">
                         <HStack justify="space-between">
                             <Text fontSize="lg" fontWeight="bold">{book.name}</Text>
-                            <Badge colorScheme={book.lastPage > 0 ? "green" : "red"}>
+                            {/* <Badge colorScheme={book.lastPage > 0 ? "green" : "red"}>
                                 {book.lastPage > 0 ? "已閱讀" : "未閱讀"}
+                            </Badge> */}
+                            <Badge colorScheme={
+                                book.lastPage === book.totalPages
+                                    ? "green"
+                                    : book.lastPage > 0
+                                    ? "yellow"
+                                    : "red"
+                            }>
+                                {book.lastPage === book.totalPages
+                                    ? "已閱讀"
+                                    : book.lastPage > 0
+                                    ? "正在讀"
+                                    : "未閱讀"}
+                            </Badge>
+
+                            <Badge colorScheme="purple"> 
+                                {book.category}
                             </Badge>
                         </HStack>
                         <Progress value={(book.lastPage / book.totalPages) * 100} colorScheme="green" size="sm" mt={2} />
@@ -338,10 +360,42 @@ function Dashboard() {
             {/* 底部圓餅圖 */}
             <HStack mt={8} spacing={8} justify="center">
                 <Box width="45%">
-                    <Doughnut data={getCategoryData()} options={{ responsive: true }} />
+                    <Doughnut data={getCategoryData()}
+                    options={{
+                            responsive: true,
+                            plugins: {
+                                doughnutlabel: {
+                                    labels: [
+                                        {
+                                            text: '總數',
+                                            font: {
+                                                size: '20'
+                                            },
+                                            color: '#36A2EB'
+                                        },
+                                    ],
+                                },
+                            },
+                        }} />
                 </Box>
                 <Box width="45%">
-                    <Doughnut data={getStatusData()} options={{ responsive: true }} />
+                    <Doughnut data={getStatusData()} 
+                    options={{
+                        responsive: true,
+                        plugins: {
+                            doughnutlabel: {
+                                labels: [
+                                    {
+                                        text: '總數',
+                                        font: {
+                                            size: '20'
+                                        },
+                                        color: '#36A2EB'
+                                    },
+                                ],
+                            },
+                        },
+                    }} />
                 </Box>
             </HStack>
              </Box>
