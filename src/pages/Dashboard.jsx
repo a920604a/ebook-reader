@@ -326,7 +326,7 @@ function Dashboard() {
                                 {book.lastPage > 0 ? "已閱讀" : "未閱讀"}
                             </Badge> */}
                             <Badge colorScheme={
-                                book.lastPage === book.totalPages
+                                book.lastPage === book.totalPages || book.lastPage === book.totalPages -1 
                                     ? "green"
                                     : book.lastPage > 0
                                     ? "yellow"
