@@ -5,7 +5,7 @@ import { supabase } from "../supabase";
 import { v4 as uuidv4 } from "uuid";
 import { clearIndexedDB, getAllBooksFromIndexedDB, saveBookToIndexedDB, deleteBookFromIndexedDB } from "../components/IndexedDB";
 import {
-    Box, Button, Input, Text, VStack, HStack, Card, Heading, useToast, Divider, Badge, useDisclosure,  Select, Progress, FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter
+    Box, Button, Input, Text, VStack, HStack, Card, Heading, useToast, Divider, Badge, useDisclosure, Select, Progress, FormControl, FormLabel, Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter
 } from "@chakra-ui/react";
 import { Doughnut } from 'react-chartjs-2';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -47,7 +47,7 @@ function Dashboard() {
 
     // 已讀/未讀/正在讀圓餅圖資料
     const getStatusData = () => {
-        const readCount = books.filter(b =>  b.lastPage === b.totalPages ).length;
+        const readCount = books.filter(b => b.lastPage === b.totalPages).length;
         const unreadCount = books.filter(b => b.lastPage === 0).length;
         const readingCount = books.filter(b => b.lastPage > 0 && b.lastPage < b.totalPages).length;
 
@@ -73,7 +73,7 @@ function Dashboard() {
         const initialize = async () => {
             setLoading(true);
             const userId = await getUserId();
-            
+
             if (!userId) {
                 console.warn("未登入，無法獲取書籍");
                 setLoading(false);
@@ -91,7 +91,7 @@ function Dashboard() {
 
             const localBooks = await getAllBooksFromIndexedDB();
             const supabaseBooks = await getBooksFromSupabase(userId);
-            
+
             console.log("載入書籍...");
 
             const missingBooks = supabaseBooks.filter(
@@ -108,9 +108,9 @@ function Dashboard() {
             let total = 0, read = 0, unread = 0, reading = 0;
 
             for (const book of allBooks) {
-                const progress = await getReadingProgress (book.id, userId);
+                const progress = await getReadingProgress(book.id, userId);
                 book.lastPage = progress.page_number || 0;
-                book.totalPages = progress.total_page  || 100; // 假設每本書有 100 頁
+                book.totalPages = progress.total_page || 100; // 假設每本書有 100 頁
                 book.last_read_time = book.last_read_time || new Date().toISOString();
                 total += 1;
                 if (book.lastPage === 0) unread += 1;
@@ -134,58 +134,14 @@ function Dashboard() {
 
     // 篩選功能：根據分類過濾書籍
     const filteredByCategory = filteredBooks.filter((book) => {
-        return selectedCategoryFilter ? book.category === selectedCategoryFilter  : true;
+        return selectedCategoryFilter ? book.category === selectedCategoryFilter : true;
     });
 
     const handleFileUpload = async () => {
-    if (!file || !category) {
-        toast({
-            title: "上傳失敗",
-            description: "請選擇檔案和分類標籤。",
-            status: "error",
-            duration: 2000,
-            isClosable: true,
-        });
-        return;
-    }
-
-    setLoading(true);
-
-    const userId = await getUserId();
-    if (!userId) {
-        toast({
-            title: "未登入",
-            description: "請先登入後再上傳書籍",
-            status: "error",
-            duration: 3000,
-            isClosable: true,
-        });
-        setLoading(false);
-        return;
-    }
-
-    // 使用 FileReader 讀取檔案
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        const newBook = {
-            id: uuidv4(),
-            name: file.name,
-            category: category,
-            data: e.target.result, // 使用 FileReader 讀取的檔案數據
-            // lastPage: 0,
-            // totalPages: 100, // TODO: 預設100頁，reader 讀取後更新
-        };
-
-        // 上傳檔案至 Supabase
-        const fileUrl = await uploadToSupabase(newBook, userId);
-        // const fileName = uuidv4() + "-" + file.name;
-        // const { data, error } = await supabase.storage.from("ebooks").upload(fileName, file);
-
-        if (!fileUrl) {
-            setLoading(false);
+        if (!file || !category) {
             toast({
                 title: "上傳失敗",
-                description: "檔案上傳失敗，請再試一次。",
+                description: "請選擇檔案和分類標籤。",
                 status: "error",
                 duration: 2000,
                 isClosable: true,
@@ -193,36 +149,80 @@ function Dashboard() {
             return;
         }
 
-        // 儲存書籍資料
-        // newBook.file_url = data?.Key;
+        setLoading(true);
 
-        // 儲存書籍資料到 IndexedDB
-        await saveBookToIndexedDB(newBook, userId, fileUrl);
+        const userId = await getUserId();
+        if (!userId) {
+            toast({
+                title: "未登入",
+                description: "請先登入後再上傳書籍",
+                status: "error",
+                duration: 3000,
+                isClosable: true,
+            });
+            setLoading(false);
+            return;
+        }
 
-        // 更新書籍列表
-        const updatedBooks = await getAllBooksFromIndexedDB();
-        setBooks(updatedBooks);
+        // 使用 FileReader 讀取檔案
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            const newBook = {
+                id: uuidv4(),
+                name: file.name,
+                category: category,
+                data: e.target.result, // 使用 FileReader 讀取的檔案數據
+                // lastPage: 0,
+                // totalPages: 100, // TODO: 預設100頁，reader 讀取後更新
+            };
 
-        setFile(null);
-        setCategory("");
-        setLoading(false);
+            // 上傳檔案至 Supabase
+            const fileUrl = await uploadToSupabase(newBook, userId);
+            // const fileName = uuidv4() + "-" + file.name;
+            // const { data, error } = await supabase.storage.from("ebooks").upload(fileName, file);
 
-        toast({
-            title: "上傳成功",
-            description: "電子書已成功上傳並儲存。",
-            status: "success",
-            duration: 3000,
-            isClosable: true,
-        });
+            if (!fileUrl) {
+                setLoading(false);
+                toast({
+                    title: "上傳失敗",
+                    description: "檔案上傳失敗，請再試一次。",
+                    status: "error",
+                    duration: 2000,
+                    isClosable: true,
+                });
+                return;
+            }
 
-        // 關閉彈跳視窗
-        onClose();
+            // 儲存書籍資料
+            // newBook.file_url = data?.Key;
+
+            // 儲存書籍資料到 IndexedDB
+            await saveBookToIndexedDB(newBook, userId, fileUrl);
+
+            // 更新書籍列表
+            const updatedBooks = await getAllBooksFromIndexedDB();
+            setBooks(updatedBooks);
+
+            setFile(null);
+            setCategory("");
+            setLoading(false);
+
+            toast({
+                title: "上傳成功",
+                description: "電子書已成功上傳並儲存。",
+                status: "success",
+                duration: 3000,
+                isClosable: true,
+            });
+
+            // 關閉彈跳視窗
+            onClose();
+        };
+
+        reader.readAsDataURL(file);
     };
 
-    reader.readAsDataURL(file);
-};
-
-      // 刪除書籍
+    // 刪除書籍
     const handleDelete = async (id, name) => {
         await deleteBookFromIndexedDB(id);
 
@@ -312,7 +312,7 @@ function Dashboard() {
                 </ModalContent>
             </Modal>
 
-          {/* 統計資料 */}
+            {/* 統計資料 */}
             <Text fontSize="lg" mb={4}>總書籍數量: {stats.total} / 已讀: {stats.read} / 未讀: {stats.unread} / 正在讀: {stats.reading}</Text>
 
 
@@ -320,48 +320,46 @@ function Dashboard() {
             <VStack spacing={4} width="100%">
                 {filteredByCategory.map((book) => (
                     <Card key={book.id} bg="white" w="100%" p={4} shadow="md">
-                        <HStack justify="space-between">
+                        <HStack justify="flex-end" w="100%">
                             <Text fontSize="lg" fontWeight="bold">{book.name}</Text>
-                            {/* <Badge colorScheme={book.lastPage > 0 ? "green" : "red"}>
-                                {book.lastPage > 0 ? "已閱讀" : "未閱讀"}
-                            </Badge> */}
-                            <Badge colorScheme={
-                                book.lastPage === book.totalPages || book.lastPage === book.totalPages -1 
-                                    ? "green"
-                                    : book.lastPage > 0
-                                    ? "yellow"
-                                    : "red"
-                            }>
-                                {book.lastPage === book.totalPages || book.lastPage === book.totalPages -1 
-                                    ? "已閱讀"
-                                    : book.lastPage > 0
-                                    ? "正在讀"
-                                    : "未閱讀"}
-                            </Badge>
-
-                            <Badge colorScheme="purple"> 
-                                {book.category}
-                            </Badge>
+                                <Spacer />
+                                <Badge colorScheme={
+                                    book.lastPage === book.totalPages || book.lastPage === book.totalPages - 1
+                                        ? "green"
+                                        : book.lastPage > 0
+                                            ? "yellow"
+                                            : "red"
+                                }>
+                                    {book.lastPage === book.totalPages || book.lastPage === book.totalPages - 1
+                                        ? "已閱讀"
+                                        : book.lastPage > 0
+                                            ? "正在讀"
+                                            : "未閱讀"}
+                                </Badge>
+                                <Badge colorScheme="purple">
+                                    {book.category}
+                                </Badge>
                         </HStack>
+
                         <Progress value={(book.lastPage / book.totalPages) * 100} colorScheme="green" size="sm" mt={2} />
                         <HStack mt={2}>
-                            
+
                             <Button onClick={() => handleRead(book.id)} colorScheme="teal" size="sm">
-                                                閱讀
-                                            </Button>
-                            
+                                閱讀
+                            </Button>
+
                             <Button onClick={() => handleDelete(book.id, book.name)} colorScheme="red" size="sm">
-                                                刪除
-                                            </Button>
+                                刪除
+                            </Button>
                         </HStack>
                     </Card>
                 ))}
-            </VStack>       
+            </VStack>
             {/* 底部圓餅圖 */}
             <HStack mt={8} spacing={8} justify="center">
                 <Box width="45%">
                     <Doughnut data={getCategoryData()}
-                    options={{
+                        options={{
                             responsive: true,
                             plugins: {
                                 doughnutlabel: {
@@ -379,26 +377,26 @@ function Dashboard() {
                         }} />
                 </Box>
                 <Box width="45%">
-                    <Doughnut data={getStatusData()} 
-                    options={{
-                        responsive: true,
-                        plugins: {
-                            doughnutlabel: {
-                                labels: [
-                                    {
-                                        text: '總數',
-                                        font: {
-                                            size: '20'
+                    <Doughnut data={getStatusData()}
+                        options={{
+                            responsive: true,
+                            plugins: {
+                                doughnutlabel: {
+                                    labels: [
+                                        {
+                                            text: '總數',
+                                            font: {
+                                                size: '20'
+                                            },
+                                            color: '#36A2EB'
                                         },
-                                        color: '#36A2EB'
-                                    },
-                                ],
+                                    ],
+                                },
                             },
-                        },
-                    }} />
+                        }} />
                 </Box>
             </HStack>
-            </Box>
+        </Box>
     );
 }
 
