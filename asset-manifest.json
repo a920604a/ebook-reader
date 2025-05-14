@@ -1,17 +1,17 @@
 {
   "files": {
     "main.css": "/ebook-reader/static/css/main.80bfcd29.css",
-    "main.js": "/ebook-reader/static/js/main.98a0928a.js",
+    "main.js": "/ebook-reader/static/js/main.98731810.js",
     "static/js/952.79cc2fa9.chunk.js": "/ebook-reader/static/js/952.79cc2fa9.chunk.js",
     "static/js/488.78cf4f62.chunk.js": "/ebook-reader/static/js/488.78cf4f62.chunk.js",
     "index.html": "/ebook-reader/index.html",
     "main.80bfcd29.css.map": "/ebook-reader/static/css/main.80bfcd29.css.map",
-    "main.98a0928a.js.map": "/ebook-reader/static/js/main.98a0928a.js.map",
+    "main.98731810.js.map": "/ebook-reader/static/js/main.98731810.js.map",
     "952.79cc2fa9.chunk.js.map": "/ebook-reader/static/js/952.79cc2fa9.chunk.js.map",
     "488.78cf4f62.chunk.js.map": "/ebook-reader/static/js/488.78cf4f62.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.80bfcd29.css",
-    "static/js/main.98a0928a.js"
+    "static/js/main.98731810.js"
   ]
 }
