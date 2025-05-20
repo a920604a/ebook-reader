@@ -111,7 +111,7 @@ function ReaderPage() {
         };
 
         initialize();
-    }, [bookId]);
+    }, [bookId, toast]);
 
     const isLoading = loading || !selectedBook;
 

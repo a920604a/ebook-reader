@@ -1,78 +1,59 @@
-# Getting Started with Create React App
+# eBook Reader 專案文檔
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## 專案概述
 
-## Project Overview
+eBook Reader 是一款基於 React 的現代化電子書閱讀器網頁應用，整合了 Supabase 做為後端服務和身份認證系統，同時使用 IndexedDB 實現本地緩存功能，提升使用體驗。應用程序支援 PDF 格式的電子書閱讀，並提供雲端存儲、書籍管理和閱讀進度追蹤功能。
 
-This project is a modern **React-based ebook reader** application that utilizes **Supabase** for authentication and cloud storage, as well as **IndexedDB** for local caching to enhance user experience. It is designed to be lightweight and responsive, making it ideal for reading ebooks on various devices.
+### 主要功能
 
-### Key Features
+* **用戶認證**：通過 Supabase Auth 和 GitHub OAuth 實現安全登入功能
+* **雲端數據存儲**：使用 Supabase Database 存儲用戶數據（如閱讀進度、書籍資訊）
+* **文件存儲**：通過 Supabase Storage 高效管理電子書文件
+* **本地緩存**：使用 IndexedDB 實現離線訪問和快速加載
+* **自動部署**：通過 GitHub Actions 實現 CI/CD，自動部署到 GitHub Pages
 
-* **User Authentication**: Secure login via GitHub OAuth using Supabase Auth.
-* **Cloud Data Storage**: Store user data (e.g., reading progress, bookmarks) using Supabase Database.
-* **File Storage**: Efficient file management using Supabase Storage for ebook files.
-* **Local Caching**: Fast offline access using IndexedDB.
-* **Automated Deployment**: CI/CD via GitHub Actions with deployment to GitHub Pages.
+## 技術架構
 
-### Directory Structure
+* **前端框架**：React 19
+* **UI 庫**：Chakra UI
+* **PDF 渲染**：@react-pdf-viewer 套件
+* **路由管理**：React Router DOM v7
+* **狀態管理**：React Hooks
+* **後端服務**：Supabase（認證、資料庫、存儲）
+* **本地數據庫**：IndexedDB
+* **部署平台**：GitHub Pages
+
+## 目錄結構
 
 ```
 ebook-reader
-├── public
-│   └── favicon.ico
+├── public                  # 靜態文件
 ├── src
-│   ├── components
-│   │   ├── UploadBook.jsx
-│   │   ├── BookReader.jsx
-│   │   └── BookList.jsx
-│   ├── pages
-│   │   ├── LoginPage.jsx
-│   │   ├── Dashboard.jsx
-│   │   └── ReaderPage.jsx
-│   ├── App.jsx
-│   └── main.jsx
-├── .github
-│   └── workflows
-│       └── deploy.yml
-├── index.html
-├── package.json
-└── vite.config.js
+│   ├── components          # 可重用組件
+│   │   ├── BookManager.jsx # 書籍管理相關功能
+│   │   └── IndexedDB.jsx   # IndexedDB 相關操作
+│   ├── pages               # 頁面組件
+│   │   ├── LoginPage.jsx   # 登入頁面
+│   │   ├── Dashboard.jsx   # 主控台頁面
+│   │   └── ReaderPage.jsx  # 閱讀器頁面
+│   ├── App.js              # 應用程式入口
+│   └── supabase.js         # Supabase 配置
+├── .github                 # GitHub 相關配置
+├── package.json           
+└── README.md              
 ```
 
-## Available Scripts
+## 功能說明
 
-In the project directory, you can run:
+1. **用戶登入**：使用 GitHub OAuth 進行身份認證
+2. **電子書上傳**：支援 PDF 文件上傳並分類
+3. **電子書管理**：查看、閱讀和刪除書籍
+4. **閱讀進度追蹤**：自動保存和恢復閱讀進度
+5. **數據分析**：提供書籍分類和閱讀狀態的圖表展示
+6. **夜間模式**：提供舒適的閱讀體驗
+7. **搜尋和篩選**：根據書名和分類快速找到所需書籍
 
-### `npm start`
-
-Runs the app in development mode. Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-### `npm test`
-
-Launches the test runner in interactive watch mode. See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder. It correctly bundles React in production mode and optimizes the build for the best performance. The build is minified, and the filenames include hashes. Your app is ready to be deployed!
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!** This command will remove the single build dependency from your project.
-
-## Deployment
-
-This project uses **GitHub Actions** for automated CI/CD. Upon each commit to the main branch, the application is automatically built and deployed to **GitHub Pages**.
-
-## Architecture Overview
-
-This project integrates several components for a seamless reading experience:
-
-* **Frontend**: Built with React, the frontend handles user interactions, file uploads, and book rendering.
-* **Authentication**: Uses Supabase Auth for secure user login via GitHub OAuth.
-* **Database**: Supabase(Postgres) Database stores user data.
-* **File Storage**: Supabase Storage is used for managing ebook files.
-* **Local Caching**: IndexedDB for fast local data access and offline support.
-* **CI/CD**: Automated testing and deployment via GitHub Actions to GitHub Pages.
+## 系統架構圖
 
 ```mermaid
 flowchart TD
@@ -106,25 +87,60 @@ flowchart TD
   F -->|版本控制| G
   G -->|自動建置與部署| H
   A -->|透過 GitHub Pages 訪問應用| H
-
 ```
 
-## Learn More
+## 開發指南
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### 環境設置
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+1. 克隆倉庫：
+   ```bash
+   git clone https://github.com/a920604a/ebook-reader.git
+   cd ebook-reader
+   ```
 
-For more about Supabase, visit the [Supabase documentation](https://supabase.com/docs).
+2. 安裝依賴：
+   ```bash
+   npm install
+   ```
 
-### Additional Resources
+3. 配置 Supabase：
+   - 在 `.env` 文件中設置您的 Supabase 憑證：
+   ```
+   REACT_APP_SUPABASE_URL=your_supabase_url
+   REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-* [Code Splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-* [Analyzing the Bundle Size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-* [Making a Progressive Web App](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-* [Advanced Configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-* [Deployment](https://facebook.github.io/create-react-app/docs/deployment)
-* [Troubleshooting Build Issues](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+4. 啟動本地開發服務器：
+   ```bash
+   npm start
+   ```
 
-## issue
-目前 不支援 indexedDB 做離線使用
+### Supabase 資料表結構
+
+1. **books 表**：存儲書籍元數據
+   - `id`: UUID (主鍵)
+   - `user_id`: UUID (用戶ID)
+   - `name`: String (書籍名稱)
+   - `file_url`: String (文件URL)
+   - `category`: String (書籍分類)
+
+2. **reading_progress 表**：記錄閱讀進度
+   - `id`: UUID (主鍵)
+   - `user_id`: UUID (用戶ID)
+   - `book_id`: UUID (書籍ID)
+   - `page_number`: Integer (當前頁數)
+   - `total_page`: Integer (總頁數)
+   - `last_read_time`: Timestamp (最後閱讀時間)
+
+## 可擴充功能
+
+請參考專案擴充建議文檔，了解未來可能的功能增強和改進。
+
+## 部署
+
+此專案使用 GitHub Actions 進行自動 CI/CD，當提交到 main 分支時，應用程序會自動構建並部署到 GitHub Pages。
+
+## 授權和協議
+
+此專案使用 MIT 授權。
