@@ -177,7 +177,7 @@ function ReaderPage() {
                             <Viewer
                                 fileUrl={selectedBook.file_url}
                                 ref={viewerRef}
-                                plugin={defaultLayoutPluginInstance}
+                                plugins={[defaultLayoutPluginInstance]}
                                 onPageChange={({ currentPage }) => handlePageChange(currentPage)}
                                 onDocumentLoad={(e) => setTotalPages(e.doc.numPages)}
                                 className="rounded-lg"
