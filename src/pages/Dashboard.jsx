@@ -324,13 +324,13 @@ function Dashboard() {
                             <Text fontSize="lg" fontWeight="bold">{book.name}</Text>
                                 <Spacer />
                                 <Badge colorScheme={
-                                    book.lastPage === book.totalPages || book.lastPage === book.totalPages - 1
+                                    book.lastPage === book.totalPages 
                                         ? "green"
                                         : book.lastPage > 0
                                             ? "yellow"
                                             : "red"
                                 }>
-                                    {book.lastPage === book.totalPages || book.lastPage === book.totalPages - 1
+                                    {book.lastPage === book.totalPages 
                                         ? "已閱讀"
                                         : book.lastPage > 0
                                             ? "正在讀"
